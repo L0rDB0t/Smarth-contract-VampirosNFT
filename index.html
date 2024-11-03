@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>CryptoVampires front-end</title>
+    <script language="javascript" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script language="javascript" type="text/javascript" src="web3.min.js"></script>
+    <script language="javascript" type="text/javascript" src="cryptovampires_abi.js"></script>
+    </head>
+   <body>
+  <div id="txStatus"></div>
+  <div id="vampires"></div>
+// La pagina quedara en blanco por que no he copilado el contrato en ethereum, solo es un ejemplo
+    <script>
+      var cryptoVampires;
+      var userAccount;
+
+      function startApp() {
+        var cryptoVampiresAddress = "YOUR_CONTRACT_ADDRESS";
+        cryptoVampires = new web3js.eth.Contract(cryptoVampiresABI, cryptoVampiresAddress);
+      
+      var accountInterval = setInterval(function() {
+        // Comprobar si la cuenta ha sido cambiada
+        if (web3.eth.accounts[0] !== userAccount) {
+          userAccount = web3.eth.accounts[0];
+          // Llamar la funcion que va a updatear la UI with de la nueva carpeta
+          getVampiresByOwner(userAccount)
+          .then(displayVampires);
+        }
+      }, 100);
+    
+      cryptoVampires.events.Transfer({ filter: { _to: userAccount } })
+        .on("data", function(event) {
+          let data = event.returnValues;
+          getVampiresByOwner(userAccount).then(displayVampires);
+        }).on("error", console.error);
+      }
+      
+      function displayVampires(ids) {
+        $("#vampires").empty();
+        for (const id of ids) {
+          // Obtener los detalles del vampiro de nuestro contrato. Devuelve un objeto `vampiro`
+          getVampiresDetails(id)
+          .then(function(vampire) {
+            // Se usa las "template literals" (plantillas literales) de ES6 para inyectar variables al HTML.
+            // Se adjunta cada uno a nuestro div #vampires 
+            $("#vampires").append(`<div class="vampire">
+              <ul>
+                <li>Name: ${vampire.name}</li>
+                <li>BLOOD: ${vampire.blood}</li>
+                <li>Level: ${vampire.level}</li>
+                <li>Wins: ${vampire.winCount}</li>
+                <li>Losses: ${vampire.lossCount}</li>
+                <li>Ready Time: ${vampire.readyTime}</li>
+              </ul>
+            </div>`);
+          });
+        }
+      }
+
+
+      function createRandomVampire(name) {
+        // Esto va a tardar un rato, así que vamos a updatear la UI para que el usuario
+        // sepa que la transacción se ha hecho correctamente
+       $("#txStatus").text("Creating new vampire on the blockchain. This may take a while...");
+        // Enviar el texto hacia nuestro contrato:
+       return cryptoVampires.methods.createRandomVampire(name)
+       .send({ from: userAccount })
+       .on("receipt", function(receipt) {
+         $("#txStatus").text("Successfully created " + name + "!");
+         // La transacción ha sido aceptada por la blockchain, así que vamos a redibujar la UI
+         getVampiresByOwner(userAccount).then(displayVampires);
+       })
+       .on("error", function(error) {
+          // Se avisa al usuario de que su transacción no ha sido completada con éxito  
+          $("#txStatus").text(error);
+       });
+     }
+
+     function feedOnKitty(vampireId, kittyId) {
+       $("#txStatus").text("Eating a kitty. This may take a while...");
+       return cryptoVampires.methods.feedOnKitty(vampireId, kittyId)
+       .send({ from: userAccount })
+       .on("receipt", function(receipt) {
+         $("#txStatus").text("Ate a kitty and spawned a new Vampire!");
+         getVampiresByOwner(userAccount).then(displayVampires);
+       })
+       .on("error", function(error) {
+        $("#txStatus").text(error);
+       });
+     }      
+     function levelUp(vampireId) {
+        $("#txStatus").text("Leveling up your vampire...");
+        return cryptoVampires.methods.levelUp(vampireId)
+        .send({ from: userAccount, value: web3js.utils.toWei("0.001", "ether") })
+        .on("receipt", function(receipt) {
+          $("#txStatus").text("Power overwhelming! Vampire successfully leveled up");
+        })
+        .on("error", function(error) {
+          $("#txStatus").text(error);
+        });
+      }
+      function getVampiresDetails(id) {
+        return cryptoVampires.methods.vampires(id).call();
+      }
+      function vampireToOwner(id) {
+        return cryptoVampires.methods.vampireToOwner(id).call();
+      }
+      function getVampiresByOwner(owner) {
+        return cryptoVampires.methods.getVampiresByOwner(owner).call();
+      }
+      window.addEventListener('load', function() {
+        // Aquí se comprueba si Web3.js ha sido inyecto por el navegador (Mist/MetaMask)
+        if (typeof web3 !== 'undefined') {
+          // Usar el proveedor Mist/MetaMask
+          web3js = new Web3(web3.currentProvider);
+        } else {
+          // Aquí se podría poner algo para avisar al usuario de que no tiene Metamask o Mist instalado
+          // Probablemente mostrarle un mensake pidiéndole que se lo instale
+        }
+        // Ahora ya puedes acceder libremente a tu DApp y usar Web3:
+        startApp()
+
+      })
+    </script>
+ </body>
+</html>
