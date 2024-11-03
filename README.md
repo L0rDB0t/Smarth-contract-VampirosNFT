@@ -1,1 +1,1 @@
-Este contrato inteligente en la red Ethereum permite a los usuarios crear y comerciar con VampirosNFT de forma segura. Utilizando la blockchain, cada NFT es único y registrado en la red Ethereum, asegurando la propiedad y autenticidad de cada VampirosNFT.
+
